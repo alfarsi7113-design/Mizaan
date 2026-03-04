@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gold Price Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #E8C97A;
+      --gold-dim: #7A5F2A;
+      --bg: #0D0B08;
+      --surface: #141210;
+      --surface2: #1C1915;
+      --border: #2A2520;
+      --text: #E8E0D0;
+      --text-dim: #7A7060;
+      --green: #4CAF72;
+      --yellow: #D4A827;
+      --red: #C0392B;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+    }
+
+    /* Ambient glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .logo-mark {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(2rem, 6vw, 3rem);
+      letter-spacing: 0.05em;
+      line-height: 1.1;
+      color: var(--text);
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--gold-light);
+    }
+
+    .subtitle {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      margin-top: 0.75rem;
+    }
+
+    /* Spot price bar */
+    .spot-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      transition: margin-bottom 0.2s, border-radius 0.2s;
+      animation: fadeDown 0.8s 0.1s ease both;
+    }
+
+    .spot-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .spot-value {
+      font-size: 0.85rem;
+      color: var(--gold-light);
+      letter-spacing: 0.05em;
+    }
+
+    .spot-status {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+
+    .dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 0.4rem;
+      animation: pulse 2s infinite;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    input, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      padding: 0.65rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--gold-dim);
+    }
+
+    input::placeholder { color: var(--text-dim); }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gold-dim);
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    select option { background: #1C1915; }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    /* Button */
+    button {
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--gold);
+      border: none;
+      border-radius: 5px;
+      color: #0D0B08;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover { background: var(--gold-light); }
+    button:active { transform: scale(0.99); }
+
+    /* Result */
+    .result {
+      margin-top: 1.5rem;
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: none;
+      animation: resultReveal 0.5s ease both;
+      border: 1px solid transparent;
+    }
+
+    .result.show { display: block; }
+
+    .result.green  { background: rgba(76,175,114,0.08); border-color: rgba(76,175,114,0.25); }
+    .result.yellow { background: rgba(212,168,39,0.08); border-color: rgba(212,168,39,0.25); }
+    .result.red    { background: rgba(192,57,43,0.08);  border-color: rgba(192,57,43,0.25); }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .verdict-icon { font-size: 1.4rem; }
+
+    .verdict-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .result.green  .verdict-label { color: var(--green); }
+    .result.yellow .verdict-label { color: var(--yellow); }
+    .result.red    .verdict-label { color: var(--red); }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .stat { display: flex; flex-direction: column; gap: 0.25rem; }
+
+    .stat-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .stat-value.highlight { color: var(--gold-light); }
+
+    .result-note {
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    /* Error */
+    .error-msg {
+      margin-top: 0.75rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      line-height: 1.6;
+      color: var(--red);
+      display: none;
+    }
+
+    .error-msg.show { display: block; }
+
+    /* Footer */
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      animation: fadeUp 0.8s 0.4s ease both;
+    }
+
+    footer a { color: var(--gold-dim); text-decoration: none; }
+
+    /* Animations */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes resultReveal {
+      from { opacity: 0; transform: scale(0.97); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <header>
+    <div class="logo-mark">◆ Mizaan</div>
+    <h1>Gold <em>Price</em><br>Calculator</h1>
+    <p class="subtitle">Is your jeweler's price fair?</p>
+  </header>
+
+  <div class="spot-bar">
+    <div>
+      <div class="spot-label" style="display:flex; align-items:center; gap:0.5rem;">
+        GOLD SPOT PRICE
+        <button onclick="fetchSpot()" id="refreshBtn" title="Refresh price" style="
+          width:auto; padding:0; background:transparent; border:none;
+          color:var(--gold-dim); cursor:pointer; font-size:0.85rem;
+          line-height:1; transition:color 0.2s, transform 0.3s;
+          display:flex; align-items:center;
+        " onmouseover="this.style.color='var(--gold-light)'"
+          onmouseout="this.style.color='var(--gold-dim)'"
+          onclick="this.style.transform='rotate(360deg)'; setTimeout(()=>this.style.transform='',400); fetchSpot();">↻</button>
+      </div>
+      <div class="spot-value" id="spotDisplay">Loading…</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="spot-status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">fetching</span>
+      </div>
+      <div id="lastRefresh" style="font-size:0.55rem; letter-spacing:0.1em; color:var(--text-dim); margin-top:0.25rem;">—</div>
+    </div>
+  </div>
+
+  <!-- Manual price entry — only visible when live fetch fails -->
+  <div id="manualPanel" style="display:none; margin-bottom:1.5rem;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 6px 6px; padding:0.75rem 1.25rem; display:flex; gap:0.75rem; align-items:center;">
+      <label style="font-size:0.58rem; letter-spacing:0.15em; color:var(--text-dim); white-space:nowrap; flex-shrink:0;">24K / gram (OMR)</label>
+      <input type="number" id="manualPrice24k" placeholder="e.g. 64.32" min="0" step="0.001"
+        style="flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.85rem; padding:0.45rem 0.75rem; outline:none;"/>
+      <button onclick="applyManualPrice()" style="padding:0.45rem 0.85rem; font-size:0.58rem; letter-spacing:0.12em; white-space:nowrap; flex-shrink:0; width:auto;">ENTER MANUALLY</button>
+    </div>
+    <div id="manualConfirm" style="display:none; font-size:0.6rem; letter-spacing:0.1em; color:var(--green); padding:0.35rem 1.25rem;">✔ Manual price applied — verify before relying on result</div>
+  </div>
+
+  <div class="card">
+    <div class="field-group">
+      <div class="field">
+        <label for="weight">Weight (grams)</label>
+        <input type="number" id="weight" placeholder="e.g. 21.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
+        <label for="karat">Karat</label>
+        <div class="select-wrap">
+          <select id="karat" onchange="renderSpot()">
+            <option value="24">24K — Pure</option>
+            <option value="21" selected>21K</option>
+            <option value="18">18K</option>
+            <option value="14">14K</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="currency">Currency</label>
+        <div class="select-wrap">
+          <select id="currency">
+            <option value="OMR">OMR — Omani Rial</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="SAR">SAR — Saudi Riyal</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="craft">Craftsmanship Style</label>
+        <div class="select-wrap">
+          <select id="craft" onchange="updateCraftPrice()">
+            <option value="2">Omani</option>
+            <option value="3">Bahraini</option>
+            <option value="4">Turki</option>
+            <option value="4">Yemeni</option>
+            <option value="4">Hindi</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Workmanship / gram</label>
+        <div id="craftPriceDisplay" style="background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:0.65rem 0.85rem; font-size:0.9rem; color:var(--gold-light); font-family:'DM Mono',monospace;">OMR 2.000 / gram</div>
+        <input type="number" id="craftCustomInput" placeholder="Enter OMR / gram" min="0" step="0.001"
+          style="display:none; margin-top:0.4rem; width:100%; background:var(--surface2); border:1px solid var(--gold-dim); border-radius:5px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.9rem; padding:0.65rem 0.85rem; outline:none;"/>
+      </div>
+      <div class="field full">
+        <label for="storePrice">Store Quoted Price</label>
+        <input type="number" id="storePrice" placeholder="What the jeweler is charging" min="0" step="0.01"/>
+      </div>
+    </div>
+
+
+
+    <hr class="divider"/>
+    <button id="calcBtn" onclick="calculate()">ANALYSE PRICE</button>
+
+        <div class="error-msg" id="errorMsg">Please fill in all fields correctly.</div>
+
+    <div class="result" id="result">
+      <div class="result-header">
+        <span class="verdict-icon" id="verdictIcon"></span>
+        <span class="verdict-label" id="verdictLabel"></span>
+      </div>
+      <div class="result-grid">
+        <div class="stat">
+          <span class="stat-label">Pure Gold Value</span>
+          <span class="stat-value highlight" id="pureValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Fair Price (gold + craft)</span>
+          <span class="stat-value highlight" id="fairValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Store Price</span>
+          <span class="stat-value" id="storeDisplay">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Premium Paid</span>
+          <span class="stat-value" id="premiumDisplay">—</span>
+        </div>
+      </div>
+      <div class="result-note" id="resultNote"></div>
+
+      <!-- Bargain section -->
+      <div id="bargainSection" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+          <span style="font-size:0.58rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase;">Suggested Counter-Offer</span>
+          <button onclick="resetBargain()" style="width:auto; padding:0.2rem 0.5rem; font-size:0.55rem; letter-spacing:0.1em; background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:3px; cursor:pointer;">RESET</button>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.6rem; color:var(--gold-light);" id="bargainPrice">—</div>
+            <div style="font-size:0.58rem; letter-spacing:0.12em; color:var(--text-dim); margin-top:0.2rem;" id="bargainNote">—</div>
+          </div>
+          <button onclick="bargainDown()" id="bargainBtn" style="width:auto; padding:0.6rem 1rem; font-size:0.65rem; letter-spacing:0.15em; border-radius:6px; flex-shrink:0;">
+            BARGAIN MORE ↓
+          </button>
+        </div>
+        <div id="bargainLimit" style="display:none; margin-top:0.5rem; font-size:0.6rem; letter-spacing:0.1em; color:var(--yellow);">
+          ⚠ Floor reached — craftmanship at 0.5 OMR/gram
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Prices sourced from <a href="https://www.goldapi.io" target="_blank">GoldAPI.io</a> · Refresh to update · For reference only
+  </footer>
+</div>
+
+<script>
+  const SYMBOLS = { USD: '$', OMR: 'OMR ', AED: 'AED ', SAR: 'SAR ', EUR: '€' };
+  let bargainStep = 0; // tracks how many 0.5 OMR reductions applied
+
+  // Per-gram OMR prices keyed by karat, fetched live
+  const gramPriceOMR = { 24: null, 22: null, 21: null, 18: null, 14: null };
+
+  // Exchange rates OMR → other currencies
+  const FX_FROM_OMR = { OMR: 1, USD: 2.5974, AED: 9.5376, SAR: 9.7403, EUR: 2.2310 };
+
+  // ─── Fetch live prices from GoldAPI.io ───
+  async function fetchSpot() {
+    try {
+      const res = await fetch('https://www.goldapi.io/api/XAU/USD', {
+        headers: { 'x-access-token': 'goldapi-s34j6smmbzxual-io', 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!data.price_gram_24k) throw new Error('bad data');
+
+      // GoldAPI returns per-gram prices in USD for each karat directly
+      const USD_TO_OMR = 0.3850;
+      gramPriceOMR[24] = data.price_gram_24k * USD_TO_OMR;
+      gramPriceOMR[22] = data.price_gram_22k * USD_TO_OMR;
+      gramPriceOMR[21] = data.price_gram_21k * USD_TO_OMR;
+      gramPriceOMR[18] = data.price_gram_18k * USD_TO_OMR;
+      gramPriceOMR[14] = data.price_gram_14k * USD_TO_OMR;
+
+      document.getElementById('statusText').textContent = 'live';
+      document.getElementById('statusDot').style.background = '#4CAF72';
+      const now = new Date();
+      document.getElementById('lastRefresh').textContent =
+        'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    } catch (e) {
+      // Hardcoded fallback (approx March 2026 rates) — block calculation
+      gramPriceOMR[24] = 64.32; gramPriceOMR[22] = 59.05;
+      gramPriceOMR[21] = 56.28; gramPriceOMR[18] = 48.24; gramPriceOMR[14] = 37.63;
+      document.getElementById('statusText').textContent = 'PRICES NOT LIVE';
+      document.getElementById('statusDot').style.background = '#C0392B';
+      const btn = document.getElementById('calcBtn');
+      btn.disabled = true;
+      btn.textContent = '⚠ LIVE PRICE UNAVAILABLE';
+      btn.style.cssText = 'background:#1A0A0A;color:#C0392B;cursor:not-allowed;border:1px solid #C0392B;opacity:1;';
+      document.getElementById('manualPanel').style.display = 'block';
+      document.querySelector('.spot-bar').style.borderRadius = '6px 6px 0 0';
+      document.querySelector('.spot-bar').style.borderBottom = 'none';
+      document.querySelector('.spot-bar').style.marginBottom = '0';
+    }
+    renderSpot();
+  }
+
+  function renderSpot() {
+    const cur   = document.getElementById('currency').value;
+    const karat = parseInt(document.getElementById('karat').value);
+    const rate  = FX_FROM_OMR[cur];
+    const sym   = SYMBOLS[cur];
+    const omrPerKarat = gramPriceOMR[karat] || gramPriceOMR[24];
+    if (!omrPerKarat) return;
+    const local = (omrPerKarat * rate).toFixed(3);
+    document.getElementById('spotDisplay').textContent = `${sym}${Number(local).toLocaleString()} / gram (${karat}K)`;
+  }
+
+  document.getElementById('currency').addEventListener('change', renderSpot);
+
+  // ─── Main calculation ───────────────────────────────────────
+  function calculate() {
+    const weight    = parseFloat(document.getElementById('weight').value);
+    const karat     = parseInt(document.getElementById('karat').value);
+    const craftSel  = document.getElementById('craft').value;
+    const craftOMR  = craftSel === 'custom'
+      ? parseFloat(document.getElementById('craftCustomInput').value) || 0
+      : parseFloat(craftSel) || 0;
+    const store     = parseFloat(document.getElementById('storePrice').value);
+    const cur       = document.getElementById('currency').value;
+    const errEl     = document.getElementById('errorMsg');
+
+    if (!weight || isNaN(weight) || !gramPriceOMR[24] || isNaN(store)) {
+      errEl.classList.add('show');
+      document.getElementById('result').classList.remove('show');
+      return;
+    }
+    errEl.classList.remove('show');
+
+    const rate = FX_FROM_OMR[cur];
+    const sym  = SYMBOLS[cur];
+
+    // Use per-gram price for selected karat directly (already karat-adjusted)
+    const gramOMR  = gramPriceOMR[karat];
+    if (!gramOMR) { errEl.classList.add('show'); return; }
+    // Fair Price = (gold per gram + craft per gram) × weight
+    const pricePerGram = gramOMR + craftOMR;          // both in OMR/gram
+    const fairPrice    = pricePerGram * rate * weight;
+    const pureValue    = gramOMR * rate * weight;     // shown separately for reference
+    const premium     = ((store - fairPrice) / fairPrice) * 100;
+
+    // Verdict thresholds
+    let cls, icon, label, note;
+    if (premium <= 10) {
+      cls = 'green'; icon = '✦'; label = 'Fair Price';
+      note = `This quote is within 10% of a reasonable fair value including workmanship. You're getting a good deal — or at least not being overcharged significantly.`;
+    } else if (premium <= 25) {
+      cls = 'yellow'; icon = '◈'; label = 'Slightly High';
+      note = `The store is charging ${premium.toFixed(1)}% above a reasonable estimate. This is common for branded shops or intricate designs. Consider negotiating, especially on making charges.`;
+    } else {
+      cls = 'red'; icon = '⬡'; label = 'Overpriced';
+      note = `At ${premium.toFixed(1)}% above fair value, this price is significantly high. We recommend getting 2–3 quotes. Gold jewelry should rarely exceed 25–30% above raw metal value unless designer-branded.`;
+    }
+
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+    document.getElementById('pureValue').textContent    = fmt(pureValue);
+    document.getElementById('fairValue').textContent    = fmt(fairPrice);
+    document.getElementById('storeDisplay').textContent = fmt(store);
+    document.getElementById('premiumDisplay').textContent = `${premium > 0 ? '+' : ''}${premium.toFixed(1)}%`;
+    document.getElementById('verdictIcon').textContent  = icon;
+    document.getElementById('verdictLabel').textContent = label;
+    document.getElementById('resultNote').textContent   = note;
+
+    const resultEl = document.getElementById('result');
+    resultEl.className = `result show ${cls}`;
+
+    // Show bargain section only when overpriced or slightly high
+    bargainStep = 0;
+    document.getElementById('bargainLimit').style.display = 'none';
+    document.getElementById('bargainBtn').disabled = false;
+    document.getElementById('bargainBtn').style.opacity = '1';
+    if (cls === 'red' || cls === 'yellow') {
+      document.getElementById('bargainSection').style.display = 'block';
+      updateBargainPrice();
+    } else {
+      document.getElementById('bargainSection').style.display = 'none';
+    }
+  }
+
+  // Allow Enter key to trigger calculate
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+  // ─── Craftsmanship price display ───────────────────────────
+  function updateCraftPrice() {
+    const sel = document.getElementById('craft').value;
+    const display = document.getElementById('craftPriceDisplay');
+    const customInput = document.getElementById('craftCustomInput');
+    if (sel === 'custom') {
+      display.style.display = 'none';
+      customInput.style.display = 'block';
+      customInput.focus();
+    } else {
+      display.style.display = 'block';
+      customInput.style.display = 'none';
+      display.textContent = `OMR ${parseFloat(sel).toFixed(3)} / gram`;
+    }
+  }
+
+  // ─── Manual price entry (fallback) ────────────────────────
+  function applyManualPrice() {
+    const val = parseFloat(document.getElementById('manualPrice24k').value);
+    if (!val || val <= 0) {
+      document.getElementById('manualPrice24k').style.borderColor = '#C0392B';
+      return;
+    }
+    document.getElementById('manualPrice24k').style.borderColor = '#2A2520';
+    // Derive all karats from 24K using standard purity ratios
+    gramPriceOMR[24] = val;
+    gramPriceOMR[22] = val * (22/24);
+    gramPriceOMR[21] = val * (21/24);
+    gramPriceOMR[18] = val * (18/24);
+    gramPriceOMR[14] = val * (14/24);
+    // Re-enable button with a manual warning style
+    const btn = document.getElementById('calcBtn');
+    btn.disabled = false;
+    btn.textContent = 'ANALYSE PRICE (MANUAL RATE)';
+    btn.style.cssText = 'background:#7A5F2A;color:#E8E0D0;cursor:pointer;border:1px solid #C9A84C;opacity:1;';
+    document.getElementById('statusText').textContent = 'MANUAL — verify prices before relying on result';
+    document.getElementById('manualConfirm').style.display = 'block';
+    renderSpot();
+  }
+
+  // ─── Bargain functions ─────────────────────────────────────
+  function updateBargainPrice() {
+    const weight   = parseFloat(document.getElementById('weight').value);
+    const karat    = parseInt(document.getElementById('karat').value);
+    const cur      = document.getElementById('currency').value;
+    const craftSel = document.getElementById('craft').value;
+    const baseCraftOMR = craftSel === 'custom'
+      ? parseFloat(document.getElementById('craftCustomInput').value) || 0
+      : parseFloat(craftSel) || 0;
+
+    const rate = FX_FROM_OMR[cur];
+    const sym  = SYMBOLS[cur];
+    const gramOMR = gramPriceOMR[karat];
+
+    // Reduce craft by 0.5 OMR per bargain step, floor at 0.5
+    const reducedCraft = Math.max(0.5, baseCraftOMR - (bargainStep * 0.5));
+    const suggestedPrice = (gramOMR + reducedCraft) * rate * weight;
+
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    document.getElementById('bargainPrice').textContent = fmt(suggestedPrice);
+
+    const craftLocal = (reducedCraft * rate).toFixed(3);
+    document.getElementById('bargainNote').textContent =
+      `Based on ${sym}${craftLocal}/gram craftsmanship${bargainStep > 0 ? ` (−${bargainStep * 0.5} OMR from original)` : ''}`;
+
+    // Disable if floor reached
+    if (reducedCraft <= 0.5) {
+      document.getElementById('bargainLimit').style.display = 'block';
+      document.getElementById('bargainBtn').disabled = true;
+      document.getElementById('bargainBtn').style.opacity = '0.4';
+    }
+  }
+
+  function bargainDown() {
+    bargainStep++;
+    updateBargainPrice();
+  }
+
+  function resetBargain() {
+    bargainStep = 0;
+    document.getElementById('bargainLimit').style.display = 'none';
+    document.getElementById('bargainBtn').disabled = false;
+    document.getElementById('bargainBtn').style.opacity = '1';
+    updateBargainPrice();
+  }
+
+  // ─── Init ───────────────────────────────────────────────────
+  fetchSpot();
+
+  // Show sticky button on mobile (screen width < 640px)
+  function checkMobile() {
+    const bar = document.getElementById('stickyBar');
+    const mainBtn = document.getElementById('calcBtn');
+    if (window.innerWidth < 640) {
+      bar.style.display = 'block';
+      mainBtn.style.display = 'none';
+      document.querySelector('.divider').style.display = 'none';
+    } else {
+      bar.style.display = 'none';
+      mainBtn.style.display = 'block';
+      document.querySelector('.divider').style.display = 'block';
+    }
+  }
+  checkMobile();
+  window.addEventListener('resize', checkMobile); // refresh every 60 seconds
+</script>
+</body>
+</html>
