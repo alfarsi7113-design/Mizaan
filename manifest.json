@@ -1,0 +1,25 @@
+{
+  "name": "Mizaan — Gold Calculator",
+  "short_name": "Mizaan",
+  "description": "Is your jeweler's price fair?",
+  "start_url": "./gold-calculator_9.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D0B08",
+  "theme_color": "#C9A84C",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

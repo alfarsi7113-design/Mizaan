@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mizaan — Gold Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#C9A84C"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Mizaan"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #E8C97A;
+      --gold-dim: #7A5F2A;
+      --bg: #0D0B08;
+      --surface: #141210;
+      --surface2: #1C1915;
+      --border: #2A2520;
+      --text: #E8E0D0;
+      --text-dim: #7A7060;
+      --green: #4CAF72;
+      --yellow: #D4A827;
+      --red: #C0392B;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .wrapper { width: 100%; max-width: 520px; }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .logo-mark {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 7vw, 3.5rem);
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(0.75rem, 2vw, 1rem);
+      letter-spacing: 0.22em;
+      line-height: 1.6;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    h1 em { font-style: italic; color: var(--gold-dim); }
+
+    .subtitle {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      margin-top: 0.75rem;
+    }
+
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.25rem;
+      margin-bottom: 1.25rem;
+      animation: fadeDown 0.8s 0.05s ease both;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.5rem;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--gold-dim);
+      color: var(--gold-light);
+    }
+
+    .mode-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── Spot bar ── */
+    .spot-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      transition: margin-bottom 0.2s, border-radius 0.2s;
+      animation: fadeDown 0.8s 0.1s ease both;
+    }
+
+    .spot-value {
+      font-size: 0.85rem;
+      color: var(--gold-light);
+      letter-spacing: 0.05em;
+    }
+
+    .spot-status { font-size: 0.6rem; letter-spacing: 0.1em; color: var(--text-dim); }
+
+    .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 0.4rem;
+      animation: pulse 2s infinite;
+    }
+
+    /* ── Card ── */
+    .card-wrap {
+      position: relative;
+      perspective: 900px;
+      perspective-origin: center center;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+      transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Active card — visible, centered */
+    .card.barrel-active {
+      position: relative;
+      transform: translateX(0) rotateZ(0deg) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    /* Exiting cards — slide out with roll */
+    .card.barrel-exit-left {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(-110%) rotateZ(-12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card.barrel-exit-right {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(110%) rotateZ(12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Entering cards — slide in with roll */
+    .card.barrel-enter-left {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(110%) rotateZ(12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card.barrel-enter-right {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(-110%) rotateZ(-12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex: 1;
+      align-content: start;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    input, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      padding: 0.65rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+      appearance: none;
+    }
+
+    input:focus, select:focus { border-color: var(--gold-dim); }
+    input::placeholder { color: var(--text-dim); }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 0.85rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--gold-dim);
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    select option { background: #1C1915; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+    button {
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--gold);
+      border: none;
+      border-radius: 5px;
+      color: #0D0B08;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover { background: var(--gold-light); }
+    button:active { transform: scale(0.99); }
+
+    /* ── Result ── */
+    .result {
+      margin-top: 1.5rem;
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: none;
+      animation: resultReveal 0.5s ease both;
+      border: 1px solid transparent;
+    }
+
+    .result.show { display: block; }
+    .result.green  { background: rgba(76,175,114,0.08); border-color: rgba(76,175,114,0.25); }
+    .result.yellow { background: rgba(212,168,39,0.08); border-color: rgba(212,168,39,0.25); }
+    .result.red    { background: rgba(192,57,43,0.08);  border-color: rgba(192,57,43,0.25); }
+
+    .result-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .verdict-icon { font-size: 1.4rem; }
+    .verdict-label { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 600; }
+    .result.green  .verdict-label { color: var(--green); }
+    .result.yellow .verdict-label { color: var(--yellow); }
+    .result.red    .verdict-label { color: var(--red); }
+
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .stat { display: flex; flex-direction: column; gap: 0.25rem; }
+    .stat-label { font-size: 0.55rem; letter-spacing: 0.18em; color: var(--text-dim); text-transform: uppercase; }
+    .stat-value { font-size: 1rem; color: var(--text); }
+    .stat-value.highlight { color: var(--gold-light); }
+
+    .result-note {
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    .error-msg { margin-top: 0.75rem; font-size: 0.65rem; letter-spacing: 0.08em; line-height: 1.6; color: var(--red); display: none; }
+    .error-msg.show { display: block; }
+
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      animation: fadeUp 0.8s 0.4s ease both;
+    }
+
+    footer a { color: var(--gold-dim); text-decoration: none; }
+
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp   { from { opacity: 0; transform: translateY(16px);  } to { opacity: 1; transform: translateY(0); } }
+    @keyframes resultReveal { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .price-status-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #1A0A0A;
+      border: 1px solid #C0392B;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      color: #C0392B;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .price-status-banner.visible { display: flex; }
+    .price-status-banner.manual {
+      background: #1A1400;
+      border-color: #C9A84C;
+      color: #C9A84C;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <header>
+    <div class="logo-mark">Mizaan</div>
+    <h1>Gold <em>Price</em> Calculator</h1>
+    <p class="subtitle" id="modeSubtitle">Is your jeweler's price fair?</p>
+  </header>
+
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnJewelry" onclick="switchMode('jewelry')">◈ Jewelry</button>
+    <button class="mode-btn" id="btnBullion" onclick="switchMode('bullion')">◆ Bullion</button>
+    <button class="mode-btn" id="btnSell" onclick="switchMode('sell')">◇ Sell</button>
+  </div>
+
+  <!-- Spot / Ask bar -->
+  <div class="spot-bar">
+    <div style="flex:1;">
+      <div style="display:flex; flex-direction:column; gap:0.35rem;">
+        <div>
+          <div style="font-size:0.5rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:0.15rem;">Spot / oz</div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div class="spot-value" id="spotUSDDisplay">Loading…</div>
+            <div id="spotChangeDisplay" style="font-size:0.65rem; letter-spacing:0.05em; font-family:'DM Mono',monospace;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.5rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:0.15rem;">Ask / gram</div>
+          <div class="spot-value" id="spotDisplay">Loading…</div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between;">
+      <button id="refreshBtn" title="Refresh price" style="
+        width:auto; padding:0; background:transparent; border:none;
+        color:var(--gold-dim); cursor:pointer; font-size:0.85rem;
+        line-height:1; transition:color 0.2s, transform 0.3s;
+        display:flex; align-items:center;
+      " onmouseover="this.style.color='var(--gold-light)'"
+        onmouseout="this.style.color='var(--gold-dim)'"
+        onclick="this.style.transform='rotate(360deg)'; setTimeout(()=>this.style.transform='',400); fetchSpot();">↻</button>
+      <div>
+        <div class="spot-status">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">fetching</span>
+        </div>
+        <div id="lastRefresh" style="font-size:0.55rem; letter-spacing:0.1em; color:var(--text-dim); margin-top:0.25rem;">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual price entry fallback -->
+  <div id="manualPanel" style="display:none; margin-bottom:1.5rem;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 6px 6px; padding:1rem 1.25rem;">
+      <div style="font-size:0.52rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:0.75rem;">Enter prices from store screen — OMR per gram</div>
+      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:0.5rem; margin-bottom:0.85rem;">
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <label style="font-size:0.52rem;letter-spacing:0.15em;color:var(--gold-dim);text-align:center;">24K</label>
+          <input type="number" id="manualPrice24k" placeholder="—" min="0" step="0.001" oninput="applyManualPrice(24,this.value)" style="text-align:center;padding:0.5rem 0.25rem;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;outline:none;width:100%;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <label style="font-size:0.52rem;letter-spacing:0.15em;color:var(--gold-dim);text-align:center;">22K</label>
+          <input type="number" id="manualPrice22k" placeholder="—" min="0" step="0.001" oninput="applyManualPrice(22,this.value)" style="text-align:center;padding:0.5rem 0.25rem;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;outline:none;width:100%;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <label style="font-size:0.52rem;letter-spacing:0.15em;color:var(--gold-dim);text-align:center;">21K</label>
+          <input type="number" id="manualPrice21k" placeholder="—" min="0" step="0.001" oninput="applyManualPrice(21,this.value)" style="text-align:center;padding:0.5rem 0.25rem;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;outline:none;width:100%;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <label style="font-size:0.52rem;letter-spacing:0.15em;color:var(--gold-dim);text-align:center;">18K</label>
+          <input type="number" id="manualPrice18k" placeholder="—" min="0" step="0.001" oninput="applyManualPrice(18,this.value)" style="text-align:center;padding:0.5rem 0.25rem;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;outline:none;width:100%;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <label style="font-size:0.52rem;letter-spacing:0.15em;color:var(--gold-dim);text-align:center;">14K</label>
+          <input type="number" id="manualPrice14k" placeholder="—" min="0" step="0.001" oninput="applyManualPrice(14,this.value)" style="text-align:center;padding:0.5rem 0.25rem;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;outline:none;width:100%;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+      </div>
+      <div style="font-size:0.52rem;letter-spacing:0.08em;color:var(--text-dim);line-height:1.6;">Enter only the karats you need. Each field is independent — blank fields remain unavailable.</div>
+    </div>
+  </div>
+
+  <div id="globalPriceBanner" class="price-status-banner" style="margin-bottom:1rem;"></div>
+  <div class="card-wrap">
+  <!-- ══════════════ JEWELRY MODE ══════════════ -->
+  <div id="jewelryCard" class="card barrel-active">
+    <div class="field-group">
+      <div class="field">
+        <label for="weight">Weight (grams)</label>
+        <input type="number" id="weight" placeholder="e.g. 21.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
+        <label for="karat">Karat</label>
+        <div class="select-wrap">
+          <select id="karat" onchange="renderSpot(); updateAnalyseButtons()">
+            <option value="24">24K — Pure</option>
+            <option value="22">22K</option>
+            <option value="21" selected>21K</option>
+            <option value="18">18K</option>
+            <option value="14">14K</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="currency">Currency</label>
+        <div class="select-wrap">
+          <select id="currency">
+            <option value="OMR">OMR — Omani Rial</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="SAR">SAR — Saudi Riyal</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="craft">Craftsmanship Style</label>
+        <div class="select-wrap">
+          <select id="craft" onchange="updateCraftPrice()">
+            <option value="2">Omani</option>
+            <option value="3">Bahraini</option>
+            <option value="4">Turki</option>
+            <option value="4">Yemeni</option>
+            <option value="4">Hindi</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Craftsmanship / gram</label>
+        <div id="craftPriceDisplay" style="background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:0.65rem 0.85rem; font-size:0.9rem; color:var(--gold-light); font-family:'DM Mono',monospace;">OMR 2.000 / gram</div>
+        <input type="number" id="craftCustomInput" placeholder="Enter OMR / gram" min="0" step="0.001"
+          style="display:none; margin-top:0.4rem; width:100%; background:var(--surface2); border:1px solid var(--gold-dim); border-radius:5px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.9rem; padding:0.65rem 0.85rem; outline:none;"/>
+      </div>
+      <div class="field full">
+        <label for="storePrice">Store Quoted Price</label>
+        <input type="number" id="storePrice" placeholder="What the jeweler is charging" min="0" step="0.01"/>
+      </div>
+    </div>
+
+    <hr class="divider" id="jewDivider"/>
+    <button id="calcBtn" onclick="calculate()">ANALYSE PRICE</button>
+    <div class="error-msg" id="errorMsg">Please fill in all fields correctly.</div>
+
+    <div class="result" id="result">
+      <div class="result-header">
+        <span class="verdict-icon" id="verdictIcon"></span>
+        <span class="verdict-label" id="verdictLabel"></span>
+      </div>
+      <div class="result-grid">
+        <div class="stat">
+          <span class="stat-label">Pure Gold Value</span>
+          <span class="stat-value highlight" id="pureValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Fair Price (gold + craft)</span>
+          <span class="stat-value highlight" id="fairValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Store Price</span>
+          <span class="stat-value" id="storeDisplay">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Premium Paid</span>
+          <span class="stat-value" id="premiumDisplay">—</span>
+        </div>
+      </div>
+      <div class="result-note" id="resultNote"></div>
+
+      <!-- Bargain section -->
+      <div id="bargainSection" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+          <span style="font-size:0.58rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase;">Suggested Counter-Offer</span>
+          <button onclick="resetBargain()" style="width:auto; padding:0.2rem 0.5rem; font-size:0.55rem; letter-spacing:0.1em; background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:3px; cursor:pointer;">RESET</button>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.6rem; color:var(--gold-light);" id="bargainPrice">—</div>
+            <div style="font-size:0.58rem; letter-spacing:0.12em; color:var(--text-dim); margin-top:0.2rem;" id="bargainNote">—</div>
+          </div>
+          <button onclick="bargainDown()" id="bargainBtn" style="width:auto; padding:0.6rem 1rem; font-size:0.65rem; letter-spacing:0.15em; border-radius:6px; flex-shrink:0;">
+            BARGAIN MORE ↓
+          </button>
+        </div>
+        <div id="bargainLimit" style="display:none; margin-top:0.5rem; font-size:0.6rem; letter-spacing:0.1em; color:var(--yellow);">
+          ⚠ Floor reached — craftsmanship at 0.5 OMR/gram
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ BULLION MODE ══════════════ -->
+  <div id="bullionCard" class="card barrel-enter-left" style="display:none;">
+    <div class="field-group">
+      <div class="field">
+        <label for="bullionSize">Size</label>
+        <div class="select-wrap">
+          <select id="bullionSize">
+            <option value="1">1 gram</option>
+            <option value="5">5 grams</option>
+            <option value="10">10 grams</option>
+            <option value="31.1035">1 oz (31.1g)</option>
+            <option value="50">50 grams</option>
+            <option value="100">100 grams</option>
+            <option value="custom">Custom weight</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="bullionCustomWeightField" style="display:none;">
+        <label for="bullionCustomWeight">Weight (grams)</label>
+        <input type="number" id="bullionCustomWeight" placeholder="e.g. 25.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
+        <label for="bullionType">Product Type</label>
+        <div class="select-wrap">
+          <select id="bullionType" onchange="updateBullionSize()">
+            <option value="bar">Bar</option>
+            <option value="coin">Coin</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="bullionCurrency">Currency</label>
+        <div class="select-wrap">
+          <select id="bullionCurrency">
+            <option value="OMR">OMR — Omani Rial</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="SAR">SAR — Saudi Riyal</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label for="bullionStorePrice">Dealer Quoted Price</label>
+        <input type="number" id="bullionStorePrice" placeholder="What the dealer is charging" min="0" step="0.01"/>
+      </div>
+    </div>
+
+    <hr class="divider" id="bullDivider"/>
+    <button id="bullionCalcBtn" onclick="calculateBullion()">ANALYSE BULLION PRICE</button>
+    <div class="error-msg" id="bullionErrorMsg">Please fill in all fields correctly.</div>
+
+    <div class="result" id="bullionResult">
+      <div class="result-header">
+        <span class="verdict-icon" id="bullionVerdictIcon"></span>
+        <span class="verdict-label" id="bullionVerdictLabel"></span>
+      </div>
+      <div class="result-grid">
+        <div class="stat">
+          <span class="stat-label">Spot Value (Ask)</span>
+          <span class="stat-value highlight" id="bullionSpotValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Dealer Price</span>
+          <span class="stat-value" id="bullionDealerDisplay">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Premium Over Ask</span>
+          <span class="stat-value" id="bullionPremiumAmt">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Premium %</span>
+          <span class="stat-value" id="bullionPremiumPct">—</span>
+        </div>
+      </div>
+      <div class="result-note" id="bullionResultNote"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SELL MODE ══════════════ -->
+  <div id="sellCard" class="card barrel-enter-left" style="display:none;">
+    <div class="field-group">
+      <div class="field">
+        <label for="sellWeight">Weight (grams)</label>
+        <input type="number" id="sellWeight" placeholder="e.g. 21.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
+        <label for="sellKarat">Karat</label>
+        <div class="select-wrap">
+          <select id="sellKarat" onchange="updateAnalyseButtons()">
+            <option value="24">24K — Pure</option>
+            <option value="22">22K</option>
+            <option value="21" selected>21K</option>
+            <option value="18">18K</option>
+            <option value="14">14K</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label for="sellCurrency">Currency</label>
+        <div class="select-wrap">
+          <select id="sellCurrency">
+            <option value="OMR">OMR — Omani Rial</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="SAR">SAR — Saudi Riyal</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label for="sellDealerOffer">Dealer's Offer</label>
+        <input type="number" id="sellDealerOffer" placeholder="What the dealer is offering you" min="0" step="0.01"/>
+      </div>
+    </div>
+
+    <hr class="divider" id="sellDivider"/>
+    <button id="sellCalcBtn" onclick="calculateSell()">ANALYSE OFFER</button>
+    <div class="error-msg" id="sellErrorMsg">Please fill in all fields correctly.</div>
+
+    <div class="result" id="sellResult">
+      <div class="result-header">
+        <span class="verdict-icon" id="sellVerdictIcon"></span>
+        <span class="verdict-label" id="sellVerdictLabel"></span>
+      </div>
+      <div class="result-grid">
+        <div class="stat">
+          <span class="stat-label">Bid Value (fair)</span>
+          <span class="stat-value highlight" id="sellBidValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Dealer's Offer</span>
+          <span class="stat-value" id="sellOfferDisplay">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Difference</span>
+          <span class="stat-value" id="sellDiffAmt">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">% of Bid Value</span>
+          <span class="stat-value" id="sellDiffPct">—</span>
+        </div>
+      </div>
+      <div class="result-note" id="sellResultNote"></div>
+    </div>
+  </div>
+
+  </div><!-- end card-wrap -->
+
+  <footer>
+    Prices sourced from <a href="https://www.goldapi.io" target="_blank">GoldAPI.io</a> · Refresh to update · For reference only
+  </footer>
+</div>
+
+<!-- Sticky mobile button -->
+<div id="stickyBar" style="position:fixed; bottom:0; left:0; right:0; padding:1rem 1.25rem; background:linear-gradient(to top, #0D0B08 60%, transparent); display:none; z-index:100;">
+  <button id="stickyBtn" onclick="handleStickyBtn()" style="width:100%; padding:1rem; font-size:0.8rem; letter-spacing:0.2em; border-radius:8px; box-shadow:0 4px 24px rgba(201,168,76,0.25);">ANALYSE PRICE</button>
+</div>
+
+<script>
+  const SYMBOLS = { USD: '$', OMR: 'OMR ', AED: 'AED ', SAR: 'SAR ', EUR: '€' };
+  const gramPriceOMR = { 24: null, 22: null, 21: null, 18: null, 14: null };
+  const FX_FROM_OMR  = { OMR: 1, USD: 2.5974, AED: 9.5376, SAR: 9.7403, EUR: 2.2310 };
+  let bargainStep = 0;
+  let currentMode = 'jewelry';
+
+  // ─── Mode switch ────────────────────────────────────────────
+  const modeOrder = ['jewelry', 'bullion', 'sell'];
+  const modeCards = { jewelry: 'jewelryCard', bullion: 'bullionCard', sell: 'sellCard' };
+  let switchTimer = null;
+  let isAnimating = false;
+
+  function switchMode(mode) {
+    if (mode === currentMode) return;
+    const oldMode = currentMode;
+    currentMode = mode;
+
+    // Cancel any pending cleanup
+    if (switchTimer) { clearTimeout(switchTimer); switchTimer = null; }
+
+    // Hard-reset ALL cards instantly
+    Object.values(modeCards).forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none';
+      el.classList.remove('barrel-active','barrel-exit-left','barrel-exit-right','barrel-enter-left','barrel-enter-right');
+      el.style.display = 'none';
+    });
+
+    const goingRight = modeOrder.indexOf(mode) > modeOrder.indexOf(oldMode);
+    const oldCard = document.getElementById(modeCards[oldMode]);
+    const newCard = document.getElementById(modeCards[mode]);
+
+    // Set old card as active (no transition yet)
+    oldCard.style.display = 'block';
+    oldCard.classList.add('barrel-active');
+
+    // Position new card off-screen (no transition yet)
+    newCard.style.display = 'block';
+    newCard.classList.add(goingRight ? 'barrel-enter-left' : 'barrel-enter-right');
+
+    // Force reflow so initial positions are painted
+    oldCard.getBoundingClientRect();
+    newCard.getBoundingClientRect();
+
+    // Re-enable transitions then animate
+    requestAnimationFrame(() => {
+      oldCard.style.transition = '';
+      newCard.style.transition = '';
+
+      requestAnimationFrame(() => {
+        oldCard.classList.remove('barrel-active');
+        oldCard.classList.add(goingRight ? 'barrel-exit-left' : 'barrel-exit-right');
+        newCard.classList.remove('barrel-enter-left', 'barrel-enter-right');
+        newCard.classList.add('barrel-active');
+      });
+    });
+
+    // Clean up old card after transition completes
+    switchTimer = setTimeout(() => {
+      oldCard.style.display = 'none';
+      oldCard.classList.remove('barrel-exit-left', 'barrel-exit-right');
+      switchTimer = null;
+    }, 500);
+
+    // Update buttons + labels
+    document.getElementById('btnJewelry').classList.toggle('active', mode === 'jewelry');
+    document.getElementById('btnBullion').classList.toggle('active', mode === 'bullion');
+    document.getElementById('btnSell').classList.toggle('active',    mode === 'sell');
+
+    const subtitles = { jewelry: "Is your jeweler's price fair?", bullion: "Is your dealer's bullion price fair?", sell: "Is your dealer's offer fair?" };
+    document.getElementById('modeSubtitle').textContent = subtitles[mode];
+    const stickyLabels = { jewelry: 'ANALYSE PRICE', bullion: 'ANALYSE BULLION', sell: 'ANALYSE OFFER' };
+    document.getElementById('stickyBtn').textContent = stickyLabels[mode];
+    renderSpot();
+  }
+
+  function handleStickyBtn() {
+    if (currentMode === 'jewelry') calculate();
+    else if (currentMode === 'bullion') calculateBullion();
+    else calculateSell();
+  }
+
+  // ─── Fetch live prices ──────────────────────────────────────
+  async function fetchSpot() {
+    try {
+      const res  = await fetch('https://www.goldapi.io/api/XAU/USD', {
+        headers: { 'x-access-token': 'goldapi-s34j6smmbzxual-io', 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!data.ask) throw new Error('bad data');
+
+      const USD_TO_OMR  = 0.3850;
+      const OZ_TO_GRAM  = 31.1035;
+      const askPerGram24 = data.ask / OZ_TO_GRAM;
+
+      gramPriceOMR[24] = askPerGram24 * USD_TO_OMR;
+      gramPriceOMR[22] = askPerGram24 * (22/24) * USD_TO_OMR;
+      gramPriceOMR[21] = askPerGram24 * (21/24) * USD_TO_OMR;
+      gramPriceOMR[18] = askPerGram24 * (18/24) * USD_TO_OMR;
+      gramPriceOMR[14] = askPerGram24 * (14/24) * USD_TO_OMR;
+
+      window._spotUSD = data.price;
+      window._spotCh  = data.ch;
+      window._spotChp = data.chp;
+
+      document.getElementById('statusText').textContent = 'live';
+      document.getElementById('statusDot').style.background = '#4CAF72';
+      const now = new Date();
+      document.getElementById('lastRefresh').textContent =
+        'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+      // Re-enable all buttons and hide manual panel
+      ['calcBtn','bullionCalcBtn','sellCalcBtn'].forEach(id => {
+        const b = document.getElementById(id);
+        b.disabled = false;
+        b.style.cssText = '';
+        const labels = { calcBtn:'ANALYSE PRICE', bullionCalcBtn:'ANALYSE BULLION', sellCalcBtn:'ANALYSE OFFER' };
+        b.textContent = labels[id];
+      });
+      document.getElementById('globalPriceBanner').classList.remove('visible','manual');
+      document.getElementById('stickyBtn').disabled = false;
+      document.getElementById('stickyBtn').style.cssText = 'width:100%;padding:1rem;font-size:0.8rem;letter-spacing:0.2em;border-radius:8px;box-shadow:0 4px 24px rgba(201,168,76,0.25);';
+      document.getElementById('manualPanel').style.display = 'none';
+      // Clear manual input fields
+      [24,22,21,18,14].forEach(k => {
+        const el = document.getElementById('manualPrice'+k+'k');
+        if (el) el.value = '';
+      });
+      const spotBar = document.querySelector('.spot-bar');
+      if (spotBar) {
+        spotBar.style.borderRadius = '';
+        spotBar.style.borderBottom = '';
+        spotBar.style.marginBottom = '';
+      }
+
+    } catch (e) {
+      // Clear ALL prices — show nothing stale
+      gramPriceOMR[24] = null; gramPriceOMR[22] = null;
+      gramPriceOMR[21] = null; gramPriceOMR[18] = null; gramPriceOMR[14] = null;
+
+      document.getElementById('statusText').textContent = 'PRICES NOT LIVE';
+      document.getElementById('statusDot').style.background = '#C0392B';
+      document.getElementById('spotUSDDisplay').textContent = 'Unavailable';
+      document.getElementById('spotDisplay').textContent = '—';
+
+      // Disable all calculate buttons
+      ['calcBtn','bullionCalcBtn','sellCalcBtn'].forEach(id => {
+        const b = document.getElementById(id);
+        b.disabled = true;
+        b.style.cssText = 'opacity:0.4;cursor:not-allowed;';
+      });
+      document.getElementById('stickyBtn').disabled = true;
+      document.getElementById('stickyBtn').style.cssText = 'width:100%;padding:1rem;font-size:0.8rem;letter-spacing:0.2em;border-radius:8px;opacity:0.4;cursor:not-allowed;';
+
+      const gb = document.getElementById('globalPriceBanner');
+      gb.classList.add('visible'); gb.classList.remove('manual');
+      gb.textContent = '⚠ LIVE PRICE UNAVAILABLE';
+
+      // Show manual entry panel
+      document.getElementById('manualPanel').style.display = 'block';
+      const spotBar = document.querySelector('.spot-bar');
+      if (spotBar) {
+        spotBar.style.borderRadius = '6px 6px 0 0';
+        spotBar.style.borderBottom = 'none';
+        spotBar.style.marginBottom = '0';
+      }
+    }
+    renderSpot();
+  }
+
+  function renderSpot() {
+    const cur   = currentMode === 'jewelry'
+      ? document.getElementById('currency').value
+      : document.getElementById('bullionCurrency').value;
+    const karat = currentMode === 'jewelry'
+      ? parseInt(document.getElementById('karat').value)
+      : 24;
+    const rate  = FX_FROM_OMR[cur];
+    const sym   = SYMBOLS[cur];
+    const omrPerKarat = gramPriceOMR[karat] || gramPriceOMR[24];
+    if (!omrPerKarat) return;
+    const local = (omrPerKarat * rate).toFixed(3);
+    document.getElementById('spotDisplay').textContent = `${sym}${Number(local).toLocaleString()} / gram (${karat}K)`;
+    if (window._spotUSD) {
+      document.getElementById('spotUSDDisplay').textContent = `$${window._spotUSD.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    }
+    if (window._spotChp !== undefined) {
+      const chp = window._spotChp;
+      const ch  = window._spotCh;
+      const up  = chp >= 0;
+      const el  = document.getElementById('spotChangeDisplay');
+      el.textContent = `${up ? '▲' : '▼'} ${Math.abs(chp).toFixed(2)}%`;
+      el.style.color = up ? 'var(--green)' : 'var(--red)';
+      el.title = `${up ? '+' : ''}${ch !== undefined ? ch.toFixed(2) : ''} USD from yesterday's close`;
+    }
+  }
+
+  document.getElementById('currency').addEventListener('change', renderSpot);
+  document.getElementById('bullionCurrency').addEventListener('change', renderSpot);
+
+  // ─── Jewelry calculation ────────────────────────────────────
+  function calculate() {
+    const weight   = parseFloat(document.getElementById('weight').value);
+    const karat    = parseInt(document.getElementById('karat').value);
+    const craftSel = document.getElementById('craft').value;
+    const craftOMR = craftSel === 'custom'
+      ? parseFloat(document.getElementById('craftCustomInput').value) || 0
+      : parseFloat(craftSel) || 0;
+    const store    = parseFloat(document.getElementById('storePrice').value);
+    const cur      = document.getElementById('currency').value;
+    const errEl    = document.getElementById('errorMsg');
+
+    if (!weight || isNaN(weight) || !gramPriceOMR[24] || isNaN(store)) {
+      errEl.classList.add('show');
+      document.getElementById('result').classList.remove('show');
+      return;
+    }
+    errEl.classList.remove('show');
+
+    const rate = FX_FROM_OMR[cur];
+    const sym  = SYMBOLS[cur];
+    const gramOMR     = gramPriceOMR[karat];
+    if (!gramOMR) { errEl.classList.add('show'); return; }
+    const pricePerGram = gramOMR + craftOMR;
+    const fairPrice    = pricePerGram * rate * weight;
+    const pureValue    = gramOMR * rate * weight;
+    const premium      = ((store - fairPrice) / fairPrice) * 100;
+
+    let cls, icon, label, note;
+    if (premium <= 10) {
+      cls = 'green'; icon = '✦'; label = 'Fair Price';
+      note = `This quote is within 10% of a reasonable fair value including workmanship. You're getting a good deal.`;
+    } else if (premium <= 25) {
+      cls = 'yellow'; icon = '◈'; label = 'Slightly High';
+      note = `The store is charging ${premium.toFixed(1)}% above a reasonable estimate. Consider negotiating, especially on making charges.`;
+    } else {
+      cls = 'red'; icon = '⬡'; label = 'Overpriced';
+      note = `At ${premium.toFixed(1)}% above fair value, this price is significantly high. We recommend getting 2–3 quotes.`;
+    }
+
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    document.getElementById('pureValue').textContent     = fmt(pureValue);
+    document.getElementById('fairValue').textContent     = fmt(fairPrice);
+    document.getElementById('storeDisplay').textContent  = fmt(store);
+    document.getElementById('premiumDisplay').textContent = `${premium > 0 ? '+' : ''}${premium.toFixed(1)}%`;
+    document.getElementById('verdictIcon').textContent   = icon;
+    document.getElementById('verdictLabel').textContent  = label;
+    document.getElementById('resultNote').textContent    = note;
+
+    const resultEl = document.getElementById('result');
+    resultEl.className = `result show ${cls}`;
+
+    bargainStep = 0;
+    document.getElementById('bargainLimit').style.display = 'none';
+    document.getElementById('bargainBtn').disabled = false;
+    document.getElementById('bargainBtn').style.opacity = '1';
+    if (cls === 'red' || cls === 'yellow') {
+      document.getElementById('bargainSection').style.display = 'block';
+      updateBargainPrice();
+    } else {
+      document.getElementById('bargainSection').style.display = 'none';
+    }
+  }
+
+  // ─── Bullion calculation ────────────────────────────────────
+  function calculateBullion() {
+    const sizeVal  = document.getElementById('bullionSize').value;
+    const weight   = sizeVal === 'custom'
+      ? parseFloat(document.getElementById('bullionCustomWeight').value)
+      : parseFloat(sizeVal);
+    const store    = parseFloat(document.getElementById('bullionStorePrice').value);
+    const cur      = document.getElementById('bullionCurrency').value;
+    const errEl    = document.getElementById('bullionErrorMsg');
+
+    if (!weight || isNaN(weight) || !gramPriceOMR[24] || isNaN(store)) {
+      errEl.classList.add('show');
+      document.getElementById('bullionResult').classList.remove('show');
+      return;
+    }
+    errEl.classList.remove('show');
+
+    const rate      = FX_FROM_OMR[cur];
+    const sym       = SYMBOLS[cur];
+    const spotValue = gramPriceOMR[24] * rate * weight;   // 24K = pure gold
+    const premiumAmt = store - spotValue;
+    const premiumPct = ((store - spotValue) / spotValue) * 100;
+
+    let cls, icon, label, note;
+    if (premiumPct <= 5) {
+      cls = 'green'; icon = '✦'; label = 'Fair Deal';
+      note = `This bullion is priced within 5% of the ask price — a standard dealer margin. You're getting a fair deal.`;
+    } else if (premiumPct <= 10) {
+      cls = 'yellow'; icon = '◈'; label = 'Slightly High';
+      note = `A ${premiumPct.toFixed(1)}% premium is on the higher end for bullion. Coins typically carry 5–8%, bars less. Consider shopping around.`;
+    } else {
+      cls = 'red'; icon = '⬡'; label = 'Overpriced';
+      note = `At ${premiumPct.toFixed(1)}% over ask, this is significantly above normal dealer margins. Compare with other dealers before buying.`;
+    }
+
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    document.getElementById('bullionSpotValue').textContent    = fmt(spotValue);
+    document.getElementById('bullionDealerDisplay').textContent = fmt(store);
+    document.getElementById('bullionPremiumAmt').textContent   = `${premiumAmt >= 0 ? '+' : ''}${fmt(premiumAmt)}`;
+    document.getElementById('bullionPremiumPct').textContent   = `${premiumPct >= 0 ? '+' : ''}${premiumPct.toFixed(2)}%`;
+    document.getElementById('bullionVerdictIcon').textContent  = icon;
+    document.getElementById('bullionVerdictLabel').textContent = label;
+    document.getElementById('bullionResultNote').textContent   = note;
+
+    const resultEl = document.getElementById('bullionResult');
+    resultEl.className = `result show ${cls}`;
+  }
+
+  // ─── Bullion size options by type ───────────────────────────
+  function updateBullionSize() {
+    const type = document.getElementById('bullionType').value;
+    const sel  = document.getElementById('bullionSize');
+    sel.innerHTML = '';
+    if (type === 'bar') {
+      [['1','1 gram'],['5','5 grams'],['10','10 grams'],['20','20 grams'],['31.1035','1 oz (31.1g)'],['50','50 grams'],['100','100 grams'],['custom','Custom weight']]
+        .forEach(([v,t]) => sel.innerHTML += `<option value="${v}">${t}</option>`);
+    } else {
+      [['31.1035','1 oz Coin (31.1g)'],['7.776','Quarter oz (7.78g)'],['15.552','Half oz (15.55g)'],['3.11','Tenth oz (3.11g)'],['custom','Custom weight']]
+        .forEach(([v,t]) => sel.innerHTML += `<option value="${v}">${t}</option>`);
+    }
+    document.getElementById('bullionCustomWeightField').style.display = 'none';
+    sel.onchange = () => {
+      document.getElementById('bullionCustomWeightField').style.display =
+        sel.value === 'custom' ? 'flex' : 'none';
+    };
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { if (currentMode === 'jewelry') calculate(); else calculateBullion(); }
+  });
+
+  // ─── Craftsmanship display ──────────────────────────────────
+  function updateCraftPrice() {
+    const sel = document.getElementById('craft').value;
+    const display = document.getElementById('craftPriceDisplay');
+    const customInput = document.getElementById('craftCustomInput');
+    if (sel === 'custom') {
+      display.style.display = 'none';
+      customInput.style.display = 'block';
+      customInput.focus();
+    } else {
+      display.style.display = 'block';
+      customInput.style.display = 'none';
+      display.textContent = `OMR ${parseFloat(sel).toFixed(3)} / gram`;
+    }
+  }
+
+  // ─── Manual fallback ────────────────────────────────────────
+  // Called live as each field is typed — updates only that karat
+  function applyManualPrice(karat, rawVal) {
+    const val = parseFloat(rawVal);
+    if (val > 0) {
+      gramPriceOMR[karat] = val;
+    } else {
+      // Field cleared — remove this karat's price
+      gramPriceOMR[karat] = null;
+    }
+    // Update banner to show manual mode is active
+    const gb = document.getElementById('globalPriceBanner');
+    const anyManual = Object.values(gramPriceOMR).some(v => v !== null);
+    if (anyManual) {
+      gb.classList.add('visible', 'manual');
+      gb.textContent = '◈ MANUAL PRICES ACTIVE';
+      document.getElementById('statusText').textContent = 'MANUAL';
+    } else {
+      gb.classList.add('visible');
+      gb.classList.remove('manual');
+      gb.textContent = '⚠ LIVE PRICE UNAVAILABLE';
+      document.getElementById('statusText').textContent = 'PRICES NOT LIVE';
+    }
+    // Re-check if the currently selected karat is now available
+    updateAnalyseButtons();
+    renderSpot();
+  }
+
+  // Enable/disable ANALYSE based on whether selected karat has a price
+  function updateAnalyseButtons() {
+    const jewKarat  = parseInt(document.getElementById('karat').value);
+    const sellKarat = parseInt(document.getElementById('sellKarat').value);
+    // Jewelry: needs its selected karat
+    const jewOk  = gramPriceOMR[jewKarat] !== null;
+    // Bullion always uses 24K
+    const bullOk = gramPriceOMR[24] !== null;
+    // Sell: needs its selected karat
+    const sellOk = gramPriceOMR[sellKarat] !== null;
+
+    setBtn('calcBtn',       jewOk);
+    setBtn('bullionCalcBtn', bullOk);
+    setBtn('sellCalcBtn',   sellOk);
+
+    const sticky = document.getElementById('stickyBtn');
+    const modeOk = currentMode === 'jewelry' ? jewOk : currentMode === 'bullion' ? bullOk : sellOk;
+    sticky.disabled = !modeOk;
+    sticky.style.cssText = modeOk
+      ? 'width:100%;padding:1rem;font-size:0.8rem;letter-spacing:0.2em;border-radius:8px;box-shadow:0 4px 24px rgba(201,168,76,0.25);'
+      : 'width:100%;padding:1rem;font-size:0.8rem;letter-spacing:0.2em;border-radius:8px;opacity:0.4;cursor:not-allowed;';
+  }
+
+  function setBtn(id, enabled) {
+    const b = document.getElementById(id);
+    b.disabled = !enabled;
+    b.style.cssText = enabled ? '' : 'opacity:0.4;cursor:not-allowed;';
+  }
+
+  // ─── Bargain functions ──────────────────────────────────────
+  function updateBargainPrice() {
+    const weight   = parseFloat(document.getElementById('weight').value);
+    const karat    = parseInt(document.getElementById('karat').value);
+    const cur      = document.getElementById('currency').value;
+    const craftSel = document.getElementById('craft').value;
+    const baseCraftOMR = craftSel === 'custom'
+      ? parseFloat(document.getElementById('craftCustomInput').value) || 0
+      : parseFloat(craftSel) || 0;
+    const rate    = FX_FROM_OMR[cur];
+    const sym     = SYMBOLS[cur];
+    const gramOMR = gramPriceOMR[karat];
+    const reducedCraft  = Math.max(0.5, baseCraftOMR - (bargainStep * 0.5));
+    const suggestedPrice = (gramOMR + reducedCraft) * rate * weight;
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    document.getElementById('bargainPrice').textContent = fmt(suggestedPrice);
+    const craftLocal = (reducedCraft * rate).toFixed(3);
+    document.getElementById('bargainNote').textContent =
+      `Based on ${sym}${craftLocal}/gram craftsmanship${bargainStep > 0 ? ` (−${bargainStep * 0.5} OMR from original)` : ''}`;
+    if (reducedCraft <= 0.5) {
+      document.getElementById('bargainLimit').style.display = 'block';
+      document.getElementById('bargainBtn').disabled = true;
+      document.getElementById('bargainBtn').style.opacity = '0.4';
+    }
+  }
+
+  function bargainDown()  { bargainStep++; updateBargainPrice(); }
+
+  function resetBargain() {
+    bargainStep = 0;
+    document.getElementById('bargainLimit').style.display = 'none';
+    document.getElementById('bargainBtn').disabled = false;
+    document.getElementById('bargainBtn').style.opacity = '1';
+    updateBargainPrice();
+  }
+
+  document.getElementById('sellCurrency').addEventListener('change', renderSpot);
+
+  // ─── Sell calculation ───────────────────────────────────────
+  function calculateSell() {
+    const weight = parseFloat(document.getElementById('sellWeight').value);
+    const karat  = parseInt(document.getElementById('sellKarat').value);
+    const offer  = parseFloat(document.getElementById('sellDealerOffer').value);
+    const cur    = document.getElementById('sellCurrency').value;
+    const errEl  = document.getElementById('sellErrorMsg');
+
+    if (!weight || isNaN(weight) || !gramPriceOMR[karat] || isNaN(offer) || offer <= 0) {
+      errEl.classList.add('show');
+      document.getElementById('sellResult').classList.remove('show');
+      return;
+    }
+    errEl.classList.remove('show');
+
+    const rate = FX_FROM_OMR[cur];
+    const sym  = SYMBOLS[cur];
+
+    // Bid = ask - typical 2% spread — pure weight value only, no collectability
+    const bidPerGramLocal = gramPriceOMR[karat] * rate * 0.98;
+    const bidValue        = bidPerGramLocal * weight;
+    const diffAmt         = offer - bidValue;
+    const diffPct         = (offer / bidValue) * 100;
+
+    let cls, icon, label, note;
+    if (diffPct >= 97) {
+      cls = 'green'; icon = '✦'; label = 'Good Offer';
+      note = `The dealer is offering ${diffPct.toFixed(1)}% of fair bid value. This is a strong offer — within normal dealer margins. You can accept with confidence.`;
+    } else if (diffPct >= 90) {
+      cls = 'yellow'; icon = '◈'; label = 'Acceptable';
+      note = `The offer is ${diffPct.toFixed(1)}% of fair bid value. Dealers typically offer 90–98% of bid. Try negotiating slightly higher before accepting.`;
+    } else {
+      cls = 'red'; icon = '⬡'; label = 'Low Offer';
+      note = `At ${diffPct.toFixed(1)}% of fair bid value, this is below standard dealer margins. Get at least 2–3 quotes from other dealers before selling.`;
+    }
+
+    const fmt = v => `${sym}${v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    document.getElementById('sellBidValue').textContent      = fmt(bidValue);
+    document.getElementById('sellOfferDisplay').textContent  = fmt(offer);
+    document.getElementById('sellDiffAmt').textContent       = `${diffAmt >= 0 ? '+' : ''}${fmt(Math.abs(diffAmt))}`;
+    document.getElementById('sellDiffPct').textContent       = `${diffPct.toFixed(1)}%`;
+    document.getElementById('sellVerdictIcon').textContent   = icon;
+    document.getElementById('sellVerdictLabel').textContent  = label;
+    document.getElementById('sellResultNote').textContent    = note;
+
+    document.getElementById('sellResult').className = `result show ${cls}`;
+  }
+
+  // ─── Init ───────────────────────────────────────────────────
+  updateBullionSize();
+  fetchSpot();
+
+  function checkMobile() {
+    const bar     = document.getElementById('stickyBar');
+    const mainBtn = document.getElementById('calcBtn');
+    const bullBtn = document.getElementById('bullionCalcBtn');
+    if (window.innerWidth < 640) {
+      bar.style.display = 'block';
+      mainBtn.style.display = 'none';
+      bullBtn.style.display = 'none';
+      document.getElementById('sellCalcBtn').style.display = 'none';
+      document.getElementById('jewDivider').style.display = 'none';
+      document.getElementById('bullDivider').style.display = 'none';
+      document.getElementById('sellDivider').style.display = 'none';
+    } else {
+      bar.style.display = 'none';
+      mainBtn.style.display = 'block';
+      bullBtn.style.display = 'block';
+      document.getElementById('sellCalcBtn').style.display = 'block';
+      document.getElementById('jewDivider').style.display = 'block';
+      document.getElementById('bullDivider').style.display = 'block';
+      document.getElementById('sellDivider').style.display = 'block';
+    }
+  }
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // ─── PWA: Register service worker ───────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
