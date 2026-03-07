@@ -56,23 +56,25 @@
 
     .logo-mark {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.35em;
+      font-size: clamp(2.2rem, 7vw, 3.5rem);
+      font-weight: 300;
+      letter-spacing: 0.2em;
       color: var(--gold);
       text-transform: uppercase;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.4rem;
     }
 
     h1 {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 300;
-      font-size: clamp(2rem, 6vw, 3rem);
-      letter-spacing: 0.05em;
-      line-height: 1.1;
-      color: var(--text);
+      font-size: clamp(0.75rem, 2vw, 1rem);
+      letter-spacing: 0.22em;
+      line-height: 1.6;
+      color: var(--text-dim);
+      text-transform: uppercase;
     }
 
-    h1 em { font-style: italic; color: var(--gold-light); }
+    h1 em { font-style: italic; color: var(--gold-dim); }
 
     .subtitle {
       font-size: 0.65rem;
@@ -284,8 +286,8 @@
 
 <div class="wrapper">
   <header>
-    <div class="logo-mark">◆ Mizaan</div>
-    <h1>Gold <em>Price</em><br>Calculator</h1>
+    <div class="logo-mark">Mizaan</div>
+    <h1>Gold <em>Price</em> Calculator</h1>
     <p class="subtitle" id="modeSubtitle">Is your jeweler's price fair?</p>
   </header>
 
@@ -388,7 +390,7 @@
         </div>
       </div>
       <div class="field">
-        <label>Workmanship / gram</label>
+        <label>Craftsmanship / gram</label>
         <div id="craftPriceDisplay" style="background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:0.65rem 0.85rem; font-size:0.9rem; color:var(--gold-light); font-family:'DM Mono',monospace;">OMR 2.000 / gram</div>
         <input type="number" id="craftCustomInput" placeholder="Enter OMR / gram" min="0" step="0.001"
           style="display:none; margin-top:0.4rem; width:100%; background:var(--surface2); border:1px solid var(--gold-dim); border-radius:5px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.9rem; padding:0.65rem 0.85rem; outline:none;"/>
@@ -454,15 +456,6 @@
   <div id="bullionCard" class="card" style="display:none;">
     <div class="field-group">
       <div class="field">
-        <label for="bullionType">Product Type</label>
-        <div class="select-wrap">
-          <select id="bullionType" onchange="updateBullionSize()">
-            <option value="bar">Bar</option>
-            <option value="coin">Coin</option>
-          </select>
-        </div>
-      </div>
-      <div class="field">
         <label for="bullionSize">Size</label>
         <div class="select-wrap">
           <select id="bullionSize">
@@ -479,6 +472,15 @@
       <div class="field" id="bullionCustomWeightField" style="display:none;">
         <label for="bullionCustomWeight">Weight (grams)</label>
         <input type="number" id="bullionCustomWeight" placeholder="e.g. 25.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
+        <label for="bullionType">Product Type</label>
+        <div class="select-wrap">
+          <select id="bullionType" onchange="updateBullionSize()">
+            <option value="bar">Bar</option>
+            <option value="coin">Coin</option>
+          </select>
+        </div>
       </div>
       <div class="field">
         <label for="bullionCurrency">Currency</label>
@@ -533,6 +535,10 @@
   <div id="sellCard" class="card" style="display:none;">
     <div class="field-group">
       <div class="field">
+        <label for="sellWeight">Weight (grams)</label>
+        <input type="number" id="sellWeight" placeholder="e.g. 21.5" min="0.01" step="0.01"/>
+      </div>
+      <div class="field">
         <label for="sellKarat">Karat</label>
         <div class="select-wrap">
           <select id="sellKarat">
@@ -543,10 +549,6 @@
             <option value="14">14K</option>
           </select>
         </div>
-      </div>
-      <div class="field">
-        <label for="sellWeight">Weight (grams)</label>
-        <input type="number" id="sellWeight" placeholder="e.g. 21.5" min="0.01" step="0.01"/>
       </div>
       <div class="field full">
         <label for="sellCurrency">Currency</label>
@@ -619,10 +621,14 @@
     currentMode = mode;
     document.getElementById('jewelryCard').style.display  = mode === 'jewelry' ? 'block' : 'none';
     document.getElementById('bullionCard').style.display  = mode === 'bullion' ? 'block' : 'none';
+    document.getElementById('sellCard').style.display     = mode === 'sell'    ? 'block' : 'none';
     document.getElementById('btnJewelry').classList.toggle('active', mode === 'jewelry');
     document.getElementById('btnBullion').classList.toggle('active', mode === 'bullion');
-    document.getElementById('modeSubtitle').textContent   = mode === 'jewelry' ? 'Is your jeweler\'s price fair?' : 'Is your dealer\'s bullion price fair?';
-    document.getElementById('stickyBtn').textContent      = mode === 'jewelry' ? 'ANALYSE PRICE' : 'ANALYSE BULLION PRICE';
+    document.getElementById('btnSell').classList.toggle('active',    mode === 'sell');
+    const subtitles = { jewelry: "Is your jeweler's price fair?", bullion: "Is your dealer's bullion price fair?", sell: "Is your dealer's offer fair?" };
+    document.getElementById('modeSubtitle').textContent = subtitles[mode];
+    const stickyLabels = { jewelry: 'ANALYSE PRICE', bullion: 'ANALYSE BULLION', sell: 'ANALYSE OFFER' };
+    document.getElementById('stickyBtn').textContent = stickyLabels[mode];
     renderSpot();
   }
 
