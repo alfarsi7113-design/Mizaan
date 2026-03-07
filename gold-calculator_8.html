@@ -148,12 +148,72 @@
     }
 
     /* ── Card ── */
+    .card-wrap {
+      position: relative;
+      perspective: 900px;
+      perspective-origin: center center;
+    }
+
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 2rem;
-      animation: fadeUp 0.8s 0.2s ease both;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+      transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Active card — visible, centered */
+    .card.barrel-active {
+      position: relative;
+      transform: translateX(0) rotateZ(0deg) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    /* Exiting cards — slide out with roll */
+    .card.barrel-exit-left {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(-110%) rotateZ(-12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card.barrel-exit-right {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(110%) rotateZ(12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Entering cards — slide in with roll */
+    .card.barrel-enter-left {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(110%) rotateZ(12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card.barrel-enter-right {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      transform: translateX(-110%) rotateZ(-12deg) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
     }
 
     .field-group {
@@ -161,6 +221,8 @@
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
       margin-bottom: 1rem;
+      flex: 1;
+      align-content: start;
     }
 
     .field { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -280,6 +342,28 @@
     @keyframes fadeUp   { from { opacity: 0; transform: translateY(16px);  } to { opacity: 1; transform: translateY(0); } }
     @keyframes resultReveal { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .price-status-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #1A0A0A;
+      border: 1px solid #C0392B;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      color: #C0392B;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .price-status-banner.visible { display: flex; }
+    .price-status-banner.manual {
+      background: #1A1400;
+      border-color: #C9A84C;
+      color: #C9A84C;
+    }
   </style>
 </head>
 <body>
@@ -345,8 +429,10 @@
     <div id="manualConfirm" style="display:none; font-size:0.6rem; letter-spacing:0.1em; color:var(--green); padding:0.35rem 1.25rem;">✔ Manual price applied</div>
   </div>
 
+  <div id="globalPriceBanner" class="price-status-banner" style="margin-bottom:1rem;"></div>
+  <div class="card-wrap">
   <!-- ══════════════ JEWELRY MODE ══════════════ -->
-  <div id="jewelryCard" class="card">
+  <div id="jewelryCard" class="card barrel-active">
     <div class="field-group">
       <div class="field">
         <label for="weight">Weight (grams)</label>
@@ -453,7 +539,7 @@
   </div>
 
   <!-- ══════════════ BULLION MODE ══════════════ -->
-  <div id="bullionCard" class="card" style="display:none;">
+  <div id="bullionCard" class="card barrel-enter-left" style="display:none;">
     <div class="field-group">
       <div class="field">
         <label for="bullionSize">Size</label>
@@ -532,7 +618,7 @@
   </div>
 
   <!-- ══════════════ SELL MODE ══════════════ -->
-  <div id="sellCard" class="card" style="display:none;">
+  <div id="sellCard" class="card barrel-enter-left" style="display:none;">
     <div class="field-group">
       <div class="field">
         <label for="sellWeight">Weight (grams)</label>
@@ -599,6 +685,8 @@
     </div>
   </div>
 
+  </div><!-- end card-wrap -->
+
   <footer>
     Prices sourced from <a href="https://www.goldapi.io" target="_blank">GoldAPI.io</a> · Refresh to update · For reference only
   </footer>
@@ -617,14 +705,68 @@
   let currentMode = 'jewelry';
 
   // ─── Mode switch ────────────────────────────────────────────
+  const modeOrder = ['jewelry', 'bullion', 'sell'];
+  const modeCards = { jewelry: 'jewelryCard', bullion: 'bullionCard', sell: 'sellCard' };
+  let switchTimer = null;
+  let isAnimating = false;
+
   function switchMode(mode) {
+    if (mode === currentMode) return;
+    const oldMode = currentMode;
     currentMode = mode;
-    document.getElementById('jewelryCard').style.display  = mode === 'jewelry' ? 'block' : 'none';
-    document.getElementById('bullionCard').style.display  = mode === 'bullion' ? 'block' : 'none';
-    document.getElementById('sellCard').style.display     = mode === 'sell'    ? 'block' : 'none';
+
+    // Cancel any pending cleanup
+    if (switchTimer) { clearTimeout(switchTimer); switchTimer = null; }
+
+    // Hard-reset ALL cards instantly
+    Object.values(modeCards).forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none';
+      el.classList.remove('barrel-active','barrel-exit-left','barrel-exit-right','barrel-enter-left','barrel-enter-right');
+      el.style.display = 'none';
+    });
+
+    const goingRight = modeOrder.indexOf(mode) > modeOrder.indexOf(oldMode);
+    const oldCard = document.getElementById(modeCards[oldMode]);
+    const newCard = document.getElementById(modeCards[mode]);
+
+    // Set old card as active (no transition yet)
+    oldCard.style.display = 'block';
+    oldCard.classList.add('barrel-active');
+
+    // Position new card off-screen (no transition yet)
+    newCard.style.display = 'block';
+    newCard.classList.add(goingRight ? 'barrel-enter-left' : 'barrel-enter-right');
+
+    // Force reflow so initial positions are painted
+    oldCard.getBoundingClientRect();
+    newCard.getBoundingClientRect();
+
+    // Re-enable transitions then animate
+    requestAnimationFrame(() => {
+      oldCard.style.transition = '';
+      newCard.style.transition = '';
+
+      requestAnimationFrame(() => {
+        oldCard.classList.remove('barrel-active');
+        oldCard.classList.add(goingRight ? 'barrel-exit-left' : 'barrel-exit-right');
+        newCard.classList.remove('barrel-enter-left', 'barrel-enter-right');
+        newCard.classList.add('barrel-active');
+      });
+    });
+
+    // Clean up old card after transition completes
+    switchTimer = setTimeout(() => {
+      oldCard.style.display = 'none';
+      oldCard.classList.remove('barrel-exit-left', 'barrel-exit-right');
+      switchTimer = null;
+    }, 500);
+
+    // Update buttons + labels
     document.getElementById('btnJewelry').classList.toggle('active', mode === 'jewelry');
     document.getElementById('btnBullion').classList.toggle('active', mode === 'bullion');
     document.getElementById('btnSell').classList.toggle('active',    mode === 'sell');
+
     const subtitles = { jewelry: "Is your jeweler's price fair?", bullion: "Is your dealer's bullion price fair?", sell: "Is your dealer's offer fair?" };
     document.getElementById('modeSubtitle').textContent = subtitles[mode];
     const stickyLabels = { jewelry: 'ANALYSE PRICE', bullion: 'ANALYSE BULLION', sell: 'ANALYSE OFFER' };
@@ -668,11 +810,14 @@
         'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 
       // Re-enable buttons
-      ['calcBtn','bullionCalcBtn'].forEach(id => {
+      ['calcBtn','bullionCalcBtn','sellCalcBtn'].forEach(id => {
         const b = document.getElementById(id);
         b.disabled = false;
         b.style.cssText = '';
+        const labels = { calcBtn:'ANALYSE PRICE', bullionCalcBtn:'ANALYSE BULLION', sellCalcBtn:'ANALYSE OFFER' };
+        b.textContent = labels[id];
       });
+      document.getElementById('globalPriceBanner').classList.remove('visible','manual');
       document.getElementById('stickyBtn').disabled = false;
       document.getElementById('stickyBtn').style.cssText = 'width:100%; padding:1rem; font-size:0.8rem; letter-spacing:0.2em; border-radius:8px; box-shadow:0 4px 24px rgba(201,168,76,0.25);';
 
@@ -682,12 +827,14 @@
       document.getElementById('statusText').textContent = 'PRICES NOT LIVE';
       document.getElementById('statusDot').style.background = '#C0392B';
       document.getElementById('spotUSDDisplay').textContent = 'Unavailable';
-      ['calcBtn','bullionCalcBtn'].forEach(id => {
+      ['calcBtn','bullionCalcBtn','sellCalcBtn'].forEach(id => {
         const b = document.getElementById(id);
         b.disabled = true;
-        b.textContent = '⚠ LIVE PRICE UNAVAILABLE';
-        b.style.cssText = 'background:#1A0A0A;color:#C0392B;cursor:not-allowed;border:1px solid #C0392B;opacity:1;';
+        b.style.cssText = 'opacity:0.4; cursor:not-allowed;';
       });
+      const gb = document.getElementById('globalPriceBanner');
+      gb.classList.add('visible'); gb.classList.remove('manual');
+      gb.textContent = '⚠ LIVE PRICE UNAVAILABLE';
       document.getElementById('manualPanel').style.display = 'block';
       const spotBar = document.querySelector('.spot-bar');
       if (spotBar) {
@@ -890,12 +1037,14 @@
     gramPriceOMR[21] = val * (21/24);
     gramPriceOMR[18] = val * (18/24);
     gramPriceOMR[14] = val * (14/24);
-    ['calcBtn','bullionCalcBtn'].forEach(id => {
+    ['calcBtn','bullionCalcBtn','sellCalcBtn'].forEach(id => {
       const b = document.getElementById(id);
       b.disabled = false;
-      b.textContent = id === 'calcBtn' ? 'ANALYSE PRICE (MANUAL RATE)' : 'ANALYSE BULLION PRICE (MANUAL RATE)';
-      b.style.cssText = 'background:#7A5F2A;color:#E8E0D0;cursor:pointer;border:1px solid #C9A84C;opacity:1;';
+      b.style.cssText = '';
     });
+      const gb = document.getElementById('globalPriceBanner');
+      gb.classList.add('visible','manual'); gb.classList.remove();
+      gb.textContent = '◈ MANUAL RATE APPLIED';
     document.getElementById('statusText').textContent = 'MANUAL';
     document.getElementById('manualConfirm').style.display = 'block';
     renderSpot();
